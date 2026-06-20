@@ -16,9 +16,11 @@ type FilterOptions = {
 
 export default function TransactionList() {
   const navigate = useNavigate();
-  const { transactions, load } = useTransactionStore();
-  const { load: loadCategories } = useCategoryStore();
-  const { accounts, load: loadAccounts } = useAccountStore();
+  const transactions = useTransactionStore((s) => s.transactions);
+  const load = useTransactionStore((s) => s.load);
+  const loadCategories = useCategoryStore((s) => s.load);
+  const accounts = useAccountStore((s) => s.accounts);
+  const loadAccounts = useAccountStore((s) => s.load);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({ type: 'all', accountId: '' });
@@ -27,7 +29,7 @@ export default function TransactionList() {
     load();
     loadCategories();
     loadAccounts();
-  }, []);
+  }, [load, loadCategories, loadAccounts]);
 
   const filtered = transactions.filter((t) => {
     if (filters.type !== 'all' && t.type !== filters.type) return false;

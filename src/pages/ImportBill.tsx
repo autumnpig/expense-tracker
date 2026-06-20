@@ -13,8 +13,9 @@ import { FileSpreadsheet } from 'lucide-react';
 
 export default function ImportBill() {
   const navigate = useNavigate();
-  const { addMany } = useTransactionStore();
-  const { accounts, load: loadAccounts } = useAccountStore();
+  const addMany = useTransactionStore((s) => s.addMany);
+  const accounts = useAccountStore((s) => s.accounts);
+  const loadAccounts = useAccountStore((s) => s.load);
 
   const [records, setRecords] = useState<ParsedRecord[]>([]);
   const [accountId, setAccountId] = useState('');

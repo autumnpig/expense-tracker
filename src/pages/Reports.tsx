@@ -10,21 +10,26 @@ import BudgetProgressBar from '@/components/business/BudgetProgressBar';
 import PieChart from '@/components/shared/PieChart';
 import ProgressBar from '@/components/shared/ProgressBar';
 import { generateMonthlyReport } from '@/services/reportGenerator';
+import { calcCategoryExpense, getCategoryBudget } from '@/services/budgetCalculator';
 import { Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Reports() {
   const navigate = useNavigate();
-  const { transactions, load: loadTx } = useTransactionStore();
-  const { categories, load: loadCategories } = useCategoryStore();
-  const { budgets, load: loadBudgets } = useBudgetStore();
-  const { selectedMonth, setSelectedMonth } = useUIStore();
+  const transactions = useTransactionStore((s) => s.transactions);
+  const loadTx = useTransactionStore((s) => s.load);
+  const categories = useCategoryStore((s) => s.categories);
+  const loadCategories = useCategoryStore((s) => s.load);
+  const budgets = useBudgetStore((s) => s.budgets);
+  const loadBudgets = useBudgetStore((s) => s.load);
+  const selectedMonth = useUIStore((s) => s.selectedMonth);
+  const setSelectedMonth = useUIStore((s) => s.setSelectedMonth);
 
   useEffect(() => {
     loadTx();
     loadCategories();
     loadBudgets();
-  }, []);
+  }, [loadTx, loadCategories, loadBudgets]);
 
   const [year, month] = selectedMonth.split('-').map(Number);
   const budget = budgets.find((b) => b.year === year && b.month === month);
@@ -41,12 +46,21 @@ export default function Reports() {
     [transactions, categories, budget, year, month],
   );
 
-  // Categories with budgets set
-  const budgetedCategories = categories.filter((c) => {
-    if (c.type !== 'expense') return false;
-    const catBudget = budget?.categoryBudgets?.[c.id];
-    return catBudget && catBudget > 0;
-  });
+  // Precompute BudgetProgressBar data to avoid store subscriptions inside loop
+  const budgetedCategories = useMemo(() => {
+    return categories
+      .filter((c) => {
+        if (c.type !== 'expense') return false;
+        const catBudget = budget?.categoryBudgets?.[c.id];
+        return catBudget && catBudget > 0;
+      })
+      .map((cat) => ({
+        categoryId: cat.id,
+        categoryName: cat.name,
+        spent: calcCategoryExpense(transactions, year, month, cat.id),
+        budgetAmount: getCategoryBudget(budget, cat.id),
+      }));
+  }, [categories, transactions, year, month, budget]);
 
   return (
     <div>
@@ -95,16 +109,16 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Category budget details */}
+        {/* Category budget details — precomputed, no store in loop */}
         {budgetedCategories.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border space-y-4">
             <h3 className="text-sm font-semibold">分类预算</h3>
             {budgetedCategories.map((cat) => (
               <BudgetProgressBar
-                key={cat.id}
-                year={year}
-                month={month}
-                categoryId={cat.id}
+                key={cat.categoryId}
+                categoryName={cat.categoryName}
+                spent={cat.spent}
+                budgetAmount={cat.budgetAmount}
               />
             ))}
           </div>
@@ -120,7 +134,13 @@ export default function Reports() {
 
         {/* Daily report */}
         <div className="bg-card rounded-xl p-4 border border-border">
-          <DailyReportCard />
+          <DailyReportCard
+            transactions={transactions}
+            categories={categories}
+            budget={budget}
+            year={year}
+            month={month}
+          />
         </div>
       </div>
     </div>

@@ -1,26 +1,27 @@
 import { useMemo } from 'react';
-import { useTransactionStore } from '@/stores/transactionStore';
-import { useCategoryStore } from '@/stores/categoryStore';
-import { useBudgetStore } from '@/stores/budgetStore';
-import { generateDailyReport, getYesterday } from '@/services/reportGenerator';
-import { generateMonthlyReport } from '@/services/reportGenerator';
+import { generateDailyReport, generateMonthlyReport } from '@/services/reportGenerator';
 import PieChart from '@/components/shared/PieChart';
 import StatCard from '@/components/shared/StatCard';
 import ProgressBar from '@/components/shared/ProgressBar';
 import TransactionListItem from '@/components/business/TransactionListItem';
 import EmptyState from '@/components/shared/EmptyState';
 import { Calendar } from 'lucide-react';
+import type { Transaction, Category, Budget } from '@/types';
 
-export default function DailyReportCard() {
-  const transactions = useTransactionStore((s) => s.transactions);
-  const categories = useCategoryStore((s) => s.categories);
-  const budget = useBudgetStore((s) => {
-    const now = new Date();
-    return s.getByMonth(now.getFullYear(), now.getMonth() + 1);
-  });
+interface DailyReportCardProps {
+  transactions: Transaction[];
+  categories: Category[];
+  budget: Budget | undefined;
+  year: number;
+  month: number;
+}
 
-  const yesterday = getYesterday();
-  const now = new Date();
+export default function DailyReportCard({ transactions, categories, budget, year, month }: DailyReportCardProps) {
+  const yesterday = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
 
   const daily = useMemo(
     () => generateDailyReport(transactions, yesterday),
@@ -33,10 +34,10 @@ export default function DailyReportCard() {
         transactions,
         categories.map((c) => ({ id: c.id, name: c.name })),
         budget,
-        now.getFullYear(),
-        now.getMonth() + 1,
+        year,
+        month,
       ),
-    [transactions, categories, budget, now],
+    [transactions, categories, budget, year, month],
   );
 
   return (

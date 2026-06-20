@@ -9,9 +9,14 @@ import EmptyState from '@/components/shared/EmptyState';
 import { DollarSign } from 'lucide-react';
 
 export default function Budget() {
-  const { categories, load: loadCategories } = useCategoryStore();
-  const { budgets, load: loadBudgets, setTotalBudget, setCategoryBudget } = useBudgetStore();
-  const { selectedMonth, setSelectedMonth } = useUIStore();
+  const categories = useCategoryStore((s) => s.categories);
+  const loadCategories = useCategoryStore((s) => s.load);
+  const budgets = useBudgetStore((s) => s.budgets);
+  const loadBudgets = useBudgetStore((s) => s.load);
+  const setTotalBudget = useBudgetStore((s) => s.setTotalBudget);
+  const setCategoryBudget = useBudgetStore((s) => s.setCategoryBudget);
+  const selectedMonth = useUIStore((s) => s.selectedMonth);
+  const setSelectedMonth = useUIStore((s) => s.setSelectedMonth);
 
   const [year, month] = selectedMonth.split('-').map(Number);
   const budget = budgets.find((b) => b.year === year && b.month === month);
@@ -22,7 +27,7 @@ export default function Budget() {
   useEffect(() => {
     loadCategories();
     loadBudgets();
-  }, []);
+  }, [loadCategories, loadBudgets]);
 
   useEffect(() => {
     if (budget) {

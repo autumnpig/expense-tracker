@@ -9,14 +9,15 @@ import type { Transaction } from '@/types';
 
 export default function AddTransaction() {
   const navigate = useNavigate();
-  const { add } = useTransactionStore();
-  const { load: loadAccounts, accounts } = useAccountStore();
-  const { load: loadCategories } = useCategoryStore();
+  const add = useTransactionStore((s) => s.add);
+  const accounts = useAccountStore((s) => s.accounts);
+  const loadAccounts = useAccountStore((s) => s.load);
+  const loadCategories = useCategoryStore((s) => s.load);
 
   useEffect(() => {
     if (accounts.length === 0) loadAccounts();
     loadCategories();
-  }, []);
+  }, [accounts.length, loadAccounts, loadCategories]);
 
   async function handleSubmit(data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
     await add(data);

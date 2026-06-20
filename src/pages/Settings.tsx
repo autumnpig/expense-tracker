@@ -23,9 +23,9 @@ export default function Settings() {
   const transactions = useTransactionStore((s) => s.transactions);
   const accounts = useAccountStore((s) => s.accounts);
   const categories = useCategoryStore((s) => s.categories);
-  const { load: loadTx } = useTransactionStore();
-  const { load: loadAccounts } = useAccountStore();
-  const { load: loadCategories } = useCategoryStore();
+  const loadTx = useTransactionStore((s) => s.load);
+  const loadAccounts = useAccountStore((s) => s.load);
+  const loadCategories = useCategoryStore((s) => s.load);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +34,7 @@ export default function Settings() {
     loadTx();
     loadAccounts();
     loadCategories();
-  }, []);
+  }, [loadTx, loadAccounts, loadCategories]);
 
   async function handleExportExcel() {
     exportToExcel(transactions, accounts, categories);

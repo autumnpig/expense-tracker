@@ -20,11 +20,15 @@ import { Plus, Upload, Wallet } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { transactions, load: loadTx } = useTransactionStore();
-  const { accounts, load: loadAccounts } = useAccountStore();
-  const { load: loadCategories } = useCategoryStore();
-  const { budgets, load: loadBudgets } = useBudgetStore();
-  const { selectedMonth, setSelectedMonth } = useUIStore();
+  const transactions = useTransactionStore((s) => s.transactions);
+  const loadTx = useTransactionStore((s) => s.load);
+  const accounts = useAccountStore((s) => s.accounts);
+  const loadAccounts = useAccountStore((s) => s.load);
+  const loadCategories = useCategoryStore((s) => s.load);
+  const budgets = useBudgetStore((s) => s.budgets);
+  const loadBudgets = useBudgetStore((s) => s.load);
+  const selectedMonth = useUIStore((s) => s.selectedMonth);
+  const setSelectedMonth = useUIStore((s) => s.setSelectedMonth);
 
   // Load all data
   useEffect(() => {
@@ -32,7 +36,7 @@ export default function Dashboard() {
     loadAccounts();
     loadCategories();
     loadBudgets();
-  }, []);
+  }, [loadTx, loadAccounts, loadCategories, loadBudgets]);
 
   const [year, month] = selectedMonth.split('-').map(Number);
   const budget = budgets.find((b) => b.year === year && b.month === month);

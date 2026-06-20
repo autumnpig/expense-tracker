@@ -8,8 +8,13 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { getLucideIcon } from '@/lib/utils';
 
 export default function Accounts() {
-  const { accounts, load, add, update, remove } = useAccountStore();
-  const { transactions, load: loadTx } = useTransactionStore();
+  const accounts = useAccountStore((s) => s.accounts);
+  const loadAccounts = useAccountStore((s) => s.load);
+  const add = useAccountStore((s) => s.add);
+  const update = useAccountStore((s) => s.update);
+  const remove = useAccountStore((s) => s.remove);
+  const transactions = useTransactionStore((s) => s.transactions);
+  const loadTx = useTransactionStore((s) => s.load);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
@@ -18,9 +23,9 @@ export default function Accounts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    load();
+    loadAccounts();
     loadTx();
-  }, []);
+  }, [loadAccounts, loadTx]);
 
   function openAdd() {
     setEditingId(null);
