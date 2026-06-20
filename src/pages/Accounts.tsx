@@ -4,14 +4,8 @@ import { useTransactionStore } from '@/stores/transactionStore';
 import { calcAccountBalance } from '@/services/budgetCalculator';
 import PageHeader from '@/components/shared/PageHeader';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
-import * as Icons from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-
-function getIcon(name: string): LucideIcon {
-  const Icon = (Icons as Record<string, LucideIcon>)[name];
-  return Icon || Icons.HelpCircle;
-}
+import { getLucideIcon } from '@/lib/utils';
 
 export default function Accounts() {
   const { accounts, load, add, update, remove } = useAccountStore();
@@ -80,7 +74,7 @@ export default function Accounts() {
       <div className="p-4 space-y-3">
         {accounts.map((a) => {
           const balance = calcAccountBalance(a.id, transactions);
-          const Icon = getIcon(a.icon);
+          const Icon = getLucideIcon(a.icon);
           return (
             <div
               key={a.id}
@@ -143,7 +137,7 @@ export default function Accounts() {
               <label className="text-xs text-muted-foreground mb-1 block">图标</label>
               <div className="flex gap-2 flex-wrap">
                 {iconOptions.map((icon) => {
-                  const I = getIcon(icon);
+                  const I = getLucideIcon(icon);
                   return (
                     <button
                       key={icon}

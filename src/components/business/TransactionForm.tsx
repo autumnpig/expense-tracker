@@ -41,7 +41,7 @@ export default function TransactionForm({ onSubmit, initialData }: TransactionFo
 
       {/* Amount */}
       <div className="py-4">
-        <AmountInput value={amount} onChange={setAmount} autoFocus />
+        <AmountInput value={amount} onChange={setAmount} />
         {amount === '' && (
           <p className="text-center text-xs text-muted-foreground mt-2">
             输入金额

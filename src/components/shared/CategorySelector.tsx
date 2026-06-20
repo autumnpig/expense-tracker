@@ -1,17 +1,11 @@
 import { useMemo } from 'react';
 import { useCategoryStore } from '@/stores/categoryStore';
-import * as Icons from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { getLucideIcon } from '@/lib/utils';
 
 interface CategorySelectorProps {
   type: 'expense' | 'income';
   value: string; // categoryId
   onChange: (categoryId: string) => void;
-}
-
-function getIcon(name: string): LucideIcon {
-  const Icon = (Icons as Record<string, LucideIcon>)[name];
-  return Icon || Icons.HelpCircle;
 }
 
 export default function CategorySelector({ type, value, onChange }: CategorySelectorProps) {
@@ -30,7 +24,7 @@ export default function CategorySelector({ type, value, onChange }: CategorySele
     <div className="grid grid-cols-4 gap-3">
       {categories.map((cat) => {
         const isSelected = value === cat.id;
-        const Icon = getIcon(cat.icon);
+        const Icon = getLucideIcon(cat.icon);
         return (
           <button
             key={cat.id}
@@ -50,8 +44,5 @@ export default function CategorySelector({ type, value, onChange }: CategorySele
   );
 }
 
-// Export for use in reports (non-interactive display)
-export function getCategoryIcon(name: string): LucideIcon {
-  const Icon = (Icons as Record<string, LucideIcon>)[name];
-  return Icon || Icons.HelpCircle;
-}
+// Re-export for backward compat
+export { getLucideIcon as getCategoryIcon } from '@/lib/utils';

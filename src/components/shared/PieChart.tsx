@@ -35,12 +35,12 @@ export default function PieChart({ data, showLegend = true }: PieChartProps) {
           dataKey="amount"
           nameKey="categoryName"
         >
-          {data.map((entry, i) => (
+          {data.map((entry) => (
             <Cell key={entry.categoryId} fill={entry.color} />
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number) => [`¥${value.toFixed(2)}`, '金额']}
+          formatter={(value) => [`¥${Number(value).toFixed(2)}`, '金额']}
           contentStyle={{
             borderRadius: '8px',
             border: '1px solid hsl(var(--border))',

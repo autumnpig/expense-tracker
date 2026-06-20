@@ -1,18 +1,11 @@
 import { useMemo } from 'react';
 import { useCategoryStore } from '@/stores/categoryStore';
-import * as Icons from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { ParsedRecord } from '@/types';
 
 interface ImportPreviewTableProps {
   records: ParsedRecord[];
   onChangeCategory: (index: number, categoryId: string) => void;
   onChangeType: (index: number, type: 'expense' | 'income') => void;
-}
-
-function getIcon(name: string): LucideIcon {
-  const Icon = (Icons as Record<string, LucideIcon>)[name];
-  return Icon || Icons.HelpCircle;
 }
 
 export default function ImportPreviewTable({

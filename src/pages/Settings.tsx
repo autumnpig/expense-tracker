@@ -15,7 +15,6 @@ import {
   Wallet,
   Tags,
   Trash2,
-  Database,
   ChevronRight,
 } from 'lucide-react';
 

@@ -43,7 +43,7 @@ export default function BarChart({ data }: BarChartProps) {
           tickLine={false}
         />
         <Tooltip
-          formatter={(value: number) => [`¥${value.toFixed(2)}`]}
+          formatter={(value) => [`¥${Number(value).toFixed(2)}`]}
           contentStyle={{
             borderRadius: '8px',
             border: '1px solid hsl(var(--border))',

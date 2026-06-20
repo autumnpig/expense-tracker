@@ -1,7 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import BottomNav from '@/components/shared/BottomNav';
-import PageHeader from '@/components/shared/PageHeader';
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import('@/pages/Dashboard'));

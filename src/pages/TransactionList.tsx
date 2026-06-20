@@ -16,8 +16,8 @@ type FilterOptions = {
 
 export default function TransactionList() {
   const navigate = useNavigate();
-  const { transactions, load, loading } = useTransactionStore();
-  const { categories, load: loadCategories } = useCategoryStore();
+  const { transactions, load } = useTransactionStore();
+  const { load: loadCategories } = useCategoryStore();
   const { accounts, load: loadAccounts } = useAccountStore();
 
   const [filterOpen, setFilterOpen] = useState(false);

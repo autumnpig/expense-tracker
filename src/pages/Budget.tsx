@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useBudgetStore } from '@/stores/budgetStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -10,7 +9,6 @@ import EmptyState from '@/components/shared/EmptyState';
 import { DollarSign } from 'lucide-react';
 
 export default function Budget() {
-  const navigate = useNavigate();
   const { categories, load: loadCategories } = useCategoryStore();
   const { budgets, load: loadBudgets, setTotalBudget, setCategoryBudget } = useBudgetStore();
   const { selectedMonth, setSelectedMonth } = useUIStore();

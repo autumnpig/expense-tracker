@@ -23,7 +23,7 @@ export const DEFAULT_EXPENSE_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = 
 export const DEFAULT_INCOME_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
   { name: '工资', icon: 'briefcase', type: 'income', isDefault: true, sortOrder: 0 },
   { name: '奖金', icon: 'star', type: 'income', isDefault: true, sortOrder: 1 },
-  { name: '红包', icon: 'red-envelope', type: 'income', isDefault: true, sortOrder: 2 }, // lucide doesn't have this, fallback
+  { name: '红包', icon: 'gift', type: 'income', isDefault: true, sortOrder: 2 },
   { name: '退款', icon: 'rotate-ccw', type: 'income', isDefault: true, sortOrder: 3 },
   { name: '转账转入', icon: 'arrow-down-circle', type: 'income', isDefault: true, sortOrder: 4 },
   { name: '其他收入', icon: 'ellipsis', type: 'income', isDefault: true, sortOrder: 5 },

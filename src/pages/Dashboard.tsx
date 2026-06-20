@@ -16,11 +16,11 @@ import {
   calcMonthIncome,
   calcRemainingBudget,
 } from '@/services/budgetCalculator';
-import { Plus, Upload, ArrowDown, ArrowUp, Wallet } from 'lucide-react';
+import { Plus, Upload, Wallet } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { transactions, load: loadTx, loading: txLoading } = useTransactionStore();
+  const { transactions, load: loadTx } = useTransactionStore();
   const { accounts, load: loadAccounts } = useAccountStore();
   const { load: loadCategories } = useCategoryStore();
   const { budgets, load: loadBudgets } = useBudgetStore();

@@ -50,16 +50,14 @@ export function detectTransfers(
       if (Math.abs(a.amount - b.amount) <= tolerance && a.amount > 0) {
         const expenseIdx = a.type === 'expense' ? i : j;
         const incomeIdx = a.type === 'income' ? i : j;
-        const expenseRec = records[expenseIdx];
-        const incomeRec = records[incomeIdx];
 
         matches.push({
           fromIndex: expenseIdx,
           toIndex: incomeIdx,
           fromAccount: a.type === 'expense' ? aAccount : bAccount,
           toAccount: a.type === 'income' ? aAccount : bAccount,
-          amount: expenseRec.amount,
-          date: expenseRec.date,
+          amount: records[expenseIdx].amount,
+          date: records[expenseIdx].date,
         });
 
         used.add(i);

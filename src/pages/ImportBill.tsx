@@ -9,7 +9,7 @@ import TransferDetectBanner from '@/components/business/TransferDetectBanner';
 import { parseBillFile } from '@/services/importParser';
 import { detectTransfers, type TransferMatch } from '@/services/transferDetector';
 import type { ParsedRecord, Transaction } from '@/types';
-import { Upload, FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 
 export default function ImportBill() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function ImportBill() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [transferMatches, setTransferMatches] = useState<TransferMatch[]>([]);
-  const [ignoredMatches, setIgnoredMatches] = useState<Set<string>>(new Set());
+  const [, setIgnoredMatches] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

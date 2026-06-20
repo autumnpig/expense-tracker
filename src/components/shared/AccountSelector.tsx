@@ -1,18 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAccountStore } from '@/stores/accountStore';
-import * as Icons from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { ChevronDown } from 'lucide-react';
+import { getLucideIcon } from '@/lib/utils';
 
 interface AccountSelectorProps {
   value: string; // accountId
   onChange: (accountId: string) => void;
   placeholder?: string;
-}
-
-function getIcon(name: string): LucideIcon {
-  const Icon = (Icons as Record<string, LucideIcon>)[name];
-  return Icon || Icons.HelpCircle;
 }
 
 export default function AccountSelector({ value, onChange, placeholder = '选择账户' }: AccountSelectorProps) {
@@ -41,7 +35,7 @@ export default function AccountSelector({ value, onChange, placeholder = '选择
       >
         {selected ? (
           <span className="flex items-center gap-2">
-            {React.createElement(getIcon(selected.icon), { size: 18 })}
+            {React.createElement(getLucideIcon(selected.icon), { size: 18 })}
             <span className="font-medium">{selected.name}</span>
           </span>
         ) : (
@@ -63,7 +57,7 @@ export default function AccountSelector({ value, onChange, placeholder = '选择
                 value === a.id ? 'text-primary font-medium' : ''
               }`}
             >
-              {React.createElement(getIcon(a.icon), { size: 18 })}
+              {React.createElement(getLucideIcon(a.icon), { size: 18 })}
               <span>{a.name}</span>
             </button>
           ))}
