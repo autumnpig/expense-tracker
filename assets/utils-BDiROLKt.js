@@ -1,0 +1,1 @@
+import{n as e,y as t}from"./index-DKEfAUc6.js";function n(n){return e[n]||t}export{n as t};

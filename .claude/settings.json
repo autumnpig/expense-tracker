@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hook": "echo '=== 自检提醒 ===' && echo '1. 刚才的改动是否通过 tsc --noEmit?' && echo '2. 是否通过 vite build?' && echo '3. 有无 Zustand selector 返回新数组/对象?' && echo '4. 有无未处理的白屏/崩溃风险?' && echo '5. 完成的功能是否实际运行验证?' && echo '若有问题，继续修复不要停。'"
+      }
+    ]
+  }
+}
