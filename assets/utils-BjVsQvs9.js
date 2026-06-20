@@ -1,0 +1,1 @@
+import{n as e,y as t}from"./index-e8gYDpPe.js";function n(n){let r=e;if(r[n])return r[n];let i=n.split(`-`).map(e=>e.charAt(0).toUpperCase()+e.slice(1)).join(``);if(r[i])return r[i];let a=n.charAt(0).toUpperCase()+n.slice(1);return r[a]?r[a]:t}export{n as t};
