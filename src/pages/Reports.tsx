@@ -31,7 +31,10 @@ export default function Reports() {
   }, [loadTx, loadCategories, loadBudgets]);
 
   const [year, month] = selectedMonth.split('-').map(Number);
-  const budget = budgets.find((b) => b.year === year && b.month === month);
+  const budget = useMemo(
+    () => budgets.find((b) => b.year === year && b.month === month),
+    [budgets, year, month],
+  );
 
   const report = useMemo(
     () =>
@@ -60,7 +63,7 @@ export default function Reports() {
       }));
   }, [categories, transactions, year, month, budget]);
 
-  // Top 5 spending categories
+  // Top 5 spending categories (use index + catId for stable unique key)
   const topCategories = useMemo(() => {
     const prefix = selectedMonth;
     const expenseTxs = transactions.filter((t) => t.date.startsWith(prefix) && t.type === 'expense' && t.categoryId);
@@ -70,14 +73,15 @@ export default function Reports() {
     }
     const sorted = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const max = sorted[0]?.[1] ?? 1;
-    return sorted.map(([catId, amt]) => ({
+    return sorted.map(([catId, amt], i) => ({
+      key: `${catId}-${i}`,
       name: categories.find((c) => c.id === catId)?.name ?? '其他',
       amount: amt,
       width: (amt / max) * 100,
     }));
   }, [transactions, selectedMonth, categories]);
 
-  // 7-day trend sparkline
+  // 7-day trend
   const trend = useMemo(() => {
     const today = new Date();
     return Array.from({ length: 7 }, (_, i) => {
@@ -184,7 +188,7 @@ export default function Reports() {
         {report.categorySummaries.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
             <h3 className="text-sm font-semibold mb-3">分类占比</h3>
-            <PieChart data={report.categorySummaries} />
+            <PieChart data={report.categorySummaries} showLegend={false} />
           </div>
         )}
 
@@ -194,9 +198,9 @@ export default function Reports() {
             <h3 className="text-sm font-semibold mb-3">支出排行 Top 5</h3>
             <div className="space-y-3">
               {topCategories.map((cat, i) => (
-                <div key={cat.name} className="flex items-center gap-2">
+                <div key={cat.key} className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground/50 w-5">#{i + 1}</span>
-                  <span className="text-sm text-muted-foreground w-14">{cat.name}</span>
+                  <span className="text-sm text-muted-foreground w-14 truncate">{cat.name}</span>
                   <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary/60"
