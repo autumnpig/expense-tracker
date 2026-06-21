@@ -21,6 +21,11 @@ export class ExpenseDB extends Dexie {
       transactions: 'id, type, date, accountId, categoryId, fromAccountId, toAccountId',
       budgets: 'id, year, month, [year+month]',
     });
+
+    // v2: add importedFrom index for re-import detection and dedup
+    this.version(2).stores({
+      transactions: 'id, type, date, accountId, categoryId, fromAccountId, toAccountId, importedFrom',
+    });
   }
 
   /** Seed default data if database is empty */

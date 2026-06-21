@@ -13,6 +13,26 @@ interface PieChartProps {
   showLegend?: boolean;
 }
 
+function renderPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) {
+  if (percent < 0.05) return null; // hide labels below 5%
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.6;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor="middle"
+      dominantBaseline="central"
+      className="text-xs font-semibold"
+    >
+      {(percent * 100).toFixed(0)}%
+    </text>
+  );
+}
+
 export default function PieChart({ data, showLegend = true }: PieChartProps) {
   if (data.length === 0) {
     return (
@@ -34,13 +54,18 @@ export default function PieChart({ data, showLegend = true }: PieChartProps) {
           paddingAngle={3}
           dataKey="amount"
           nameKey="categoryName"
+          label={renderPieLabel}
+          labelLine={false}
         >
           {data.map((entry) => (
             <Cell key={entry.categoryId} fill={entry.color} />
           ))}
         </Pie>
         <Tooltip
-          formatter={(value) => [`¥${Number(value).toFixed(2)}`, '金额']}
+          formatter={(_value, _name, props) => [
+            `¥${Number(props.payload.amount).toFixed(2)} (${props.payload.percentage.toFixed(1)}%)`,
+            props.payload.categoryName,
+          ]}
           contentStyle={{
             borderRadius: '8px',
             border: '1px solid hsl(var(--border))',

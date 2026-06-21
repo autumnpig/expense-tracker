@@ -61,7 +61,14 @@ export interface ParsedRecord {
   amount: number;
   description: string;
   type: 'expense' | 'income';
+  categoryId?: string;
   rawRow: Record<string, string>;
+  /** Auto-detected: this record is a transfer FROM this account (e.g. 微信零钱→银行卡) */
+  transferFromAccount?: string;
+  /** Auto-detected: this record is a transfer TO this account (e.g. 银行卡→微信零钱) */
+  transferToAccount?: string;
+  /** Category was auto-applied from persistent memory (not keyword matching) */
+  fromMemory?: boolean;
 }
 
 // ========== Report ==========

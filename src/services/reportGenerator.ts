@@ -34,7 +34,7 @@ export function generateMonthlyReport(
 ): MonthlyReport {
   const totalExpense = calcMonthExpense(transactions, year, month);
   const totalIncome = calcMonthIncome(transactions, year, month);
-  const remaining = calcRemainingBudget(budget, totalExpense);
+  const remaining = totalIncome - totalExpense;
 
   // Category summaries for expenses only
   const expenseCategories = categories.filter((c) => {

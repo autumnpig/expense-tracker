@@ -24,6 +24,9 @@ interface TransactionState {
   update: (id: string, data: Partial<Transaction>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   removeMany: (ids: string[]) => Promise<void>;
+  removeByImportedFrom: (fileName: string) => Promise<number>;
+  countByImportedFrom: (fileName: string) => Promise<number>;
+  fetchForDedup: (dates: string[]) => Promise<Array<{ date: string; amount: number; type: string; note: string; importedFrom?: string }>>;
 }
 
 export const useTransactionStore = create<TransactionState>((set, get) => ({
@@ -114,5 +117,32 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     await db.transactions.bulkDelete(ids);
     const idSet = new Set(ids);
     set((s) => ({ transactions: s.transactions.filter((t) => !idSet.has(t.id)) }));
+  },
+
+  removeByImportedFrom: async (fileName) => {
+    const matches = await db.transactions.where('importedFrom').equals(fileName).toArray();
+    if (matches.length > 0) {
+      await db.transactions.bulkDelete(matches.map((t) => t.id));
+      const idSet = new Set(matches.map((t) => t.id));
+      set((s) => ({ transactions: s.transactions.filter((t) => !idSet.has(t.id)) }));
+    }
+    return matches.length;
+  },
+
+  countByImportedFrom: async (fileName) => {
+    return await db.transactions.where('importedFrom').equals(fileName).count();
+  },
+
+  fetchForDedup: async (dates) => {
+    if (dates.length === 0) return [];
+    const sorted = [...dates].sort();
+    const minDate = sorted[0];
+    const maxDate = sorted[sorted.length - 1];
+    // Use indexed date query to minimize DB scan
+    const candidates = await db.transactions
+      .where('date')
+      .between(minDate, maxDate, true, true)
+      .toArray();
+    return candidates.map((t) => ({ date: t.date, amount: t.amount, type: t.type, note: t.note, importedFrom: t.importedFrom }));
   },
 }));
