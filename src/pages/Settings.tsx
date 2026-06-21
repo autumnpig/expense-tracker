@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useAccountStore } from '@/stores/accountStore';
@@ -18,6 +18,30 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+/** Calculate lifetime balance for each account from all transactions */
+function calcAccountBalances(
+  transactions: Array<{ type: string; amount: number; accountId?: string; fromAccountId?: string; toAccountId?: string }>,
+  accounts: Array<{ id: string; name: string; color: string }>,
+): Array<{ id: string; name: string; color: string; balance: number }> {
+  const balanceMap = new Map<string, number>();
+  for (const a of accounts) balanceMap.set(a.id, 0);
+
+  for (const t of transactions) {
+    if (t.type === 'expense' && t.accountId) {
+      balanceMap.set(t.accountId, (balanceMap.get(t.accountId) ?? 0) - t.amount);
+    } else if (t.type === 'income' && t.accountId) {
+      balanceMap.set(t.accountId, (balanceMap.get(t.accountId) ?? 0) + t.amount);
+    } else if (t.type === 'transfer') {
+      if (t.fromAccountId) balanceMap.set(t.fromAccountId, (balanceMap.get(t.fromAccountId) ?? 0) - t.amount);
+      if (t.toAccountId) balanceMap.set(t.toAccountId, (balanceMap.get(t.toAccountId) ?? 0) + t.amount);
+    }
+  }
+
+  return accounts
+    .map((a) => ({ ...a, balance: balanceMap.get(a.id) ?? 0 }))
+    .sort((a, b) => b.balance - a.balance);
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const transactions = useTransactionStore((s) => s.transactions);
@@ -35,6 +59,13 @@ export default function Settings() {
     loadAccounts();
     loadCategories();
   }, [loadTx, loadAccounts, loadCategories]);
+
+  // Account balances
+  const accountBalances = useMemo(
+    () => calcAccountBalances(transactions, accounts),
+    [transactions, accounts],
+  );
+  const totalAssets = accountBalances.reduce((s, a) => s + a.balance, 0);
 
   async function handleExportExcel() {
     exportToExcel(transactions, accounts, categories);
@@ -115,7 +146,30 @@ export default function Settings() {
     <div>
       <PageHeader title="我的" />
 
-      <div className="p-4 space-y-1">
+      <div className="p-4 space-y-4">
+        {/* Total assets */}
+        {accounts.length > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">总资产</span>
+              <span className="text-lg font-bold">¥{totalAssets.toFixed(2)}</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto">
+              {accountBalances.map((a) => (
+                <div key={a.id} className="flex-1 min-w-0 bg-muted rounded-lg px-3 py-2 text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: a.color }} />
+                    <span className="text-xs text-muted-foreground truncate">{a.name}</span>
+                  </div>
+                  <p className={`text-sm font-semibold ${a.balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                    ¥{a.balance.toFixed(0)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="space-y-1">
         {menuItems.map((item, i) => (
           <button
             key={i}
@@ -173,6 +227,7 @@ export default function Settings() {
         onConfirm={handleClearAll}
         onCancel={() => setConfirmClear(false)}
       />
+      </div>
     </div>
   );
 }

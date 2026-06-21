@@ -5,7 +5,6 @@ import { useBudgetStore } from '@/stores/budgetStore';
 import { useUIStore } from '@/stores/uiStore';
 import PageHeader from '@/components/shared/PageHeader';
 import MonthPicker from '@/components/shared/MonthPicker';
-import DailyReportCard from '@/components/business/DailyReportCard';
 import BudgetProgressBar from '@/components/business/BudgetProgressBar';
 import PieChart from '@/components/shared/PieChart';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -46,7 +45,6 @@ export default function Reports() {
     [transactions, categories, budget, year, month],
   );
 
-  // Precompute BudgetProgressBar data to avoid store subscriptions inside loop
   const budgetedCategories = useMemo(() => {
     return categories
       .filter((c) => {
@@ -61,6 +59,38 @@ export default function Reports() {
         budgetAmount: getCategoryBudget(budget, cat.id),
       }));
   }, [categories, transactions, year, month, budget]);
+
+  // Top 5 spending categories
+  const topCategories = useMemo(() => {
+    const prefix = selectedMonth;
+    const expenseTxs = transactions.filter((t) => t.date.startsWith(prefix) && t.type === 'expense' && t.categoryId);
+    const byCat = new Map<string, number>();
+    for (const t of expenseTxs) {
+      byCat.set(t.categoryId!, (byCat.get(t.categoryId!) ?? 0) + t.amount);
+    }
+    const sorted = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const max = sorted[0]?.[1] ?? 1;
+    return sorted.map(([catId, amt]) => ({
+      name: categories.find((c) => c.id === catId)?.name ?? '其他',
+      amount: amt,
+      width: (amt / max) * 100,
+    }));
+  }, [transactions, selectedMonth, categories]);
+
+  // 7-day trend sparkline
+  const trend = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const amt = transactions
+        .filter((t) => t.date === ds && t.type === 'expense')
+        .reduce((s, t) => s + t.amount, 0);
+      return { day: d.getDate(), expense: amt };
+    });
+  }, [transactions]);
+  const maxTrend = Math.max(...trend.map((d) => d.expense), 1);
 
   return (
     <div>
@@ -101,6 +131,32 @@ export default function Reports() {
           </div>
         </div>
 
+        {/* Trend sparkline */}
+        {report.totalExpense > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <h3 className="text-sm font-semibold mb-2">近7天支出趋势</h3>
+            <div className="flex items-end gap-1 h-20">
+              {trend.map((d) => (
+                <div key={d.day} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {d.expense > 0 ? `¥${d.expense.toFixed(0)}` : ''}
+                  </span>
+                  <div
+                    className="w-full rounded-sm"
+                    style={{
+                      height: `${(d.expense / maxTrend) * 100}%`,
+                      minHeight: d.expense > 0 ? '4px' : '1px',
+                      backgroundColor: d.expense > 0 ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                      opacity: d.expense > 0 ? 1 : 0.3,
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground">{d.day}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Budget progress */}
         {report.totalBudget > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
@@ -109,7 +165,7 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Category budget details — precomputed, no store in loop */}
+        {/* Category budget details */}
         {budgetedCategories.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border space-y-4">
             <h3 className="text-sm font-semibold">分类预算</h3>
@@ -132,16 +188,27 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Daily report */}
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <DailyReportCard
-            transactions={transactions}
-            categories={categories}
-            budget={budget}
-            year={year}
-            month={month}
-          />
-        </div>
+        {/* Top 5 ranking */}
+        {topCategories.length > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <h3 className="text-sm font-semibold mb-3">支出排行 Top 5</h3>
+            <div className="space-y-3">
+              {topCategories.map((cat, i) => (
+                <div key={cat.name} className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground/50 w-5">#{i + 1}</span>
+                  <span className="text-sm text-muted-foreground w-14">{cat.name}</span>
+                  <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/60"
+                      style={{ width: `${cat.width}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-mono font-medium">¥{cat.amount.toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

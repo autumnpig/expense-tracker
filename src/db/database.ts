@@ -28,8 +28,12 @@ export class ExpenseDB extends Dexie {
     });
   }
 
-  /** Seed default data if database is empty */
+  private seeded = false;
+
+  /** Seed default data if database is empty. Idempotent — safe to call multiple times. */
   async seedDefaults(): Promise<void> {
+    if (this.seeded) return;
+
     const accountCount = await this.accounts.count();
     if (accountCount === 0) {
       const now = new Date();
@@ -38,7 +42,11 @@ export class ExpenseDB extends Dexie {
         id: `default-account-${i}`,
         createdAt: now,
       }));
-      await this.accounts.bulkAdd(accounts);
+      try {
+        await this.accounts.bulkAdd(accounts);
+      } catch {
+        // Race condition: another call already seeded
+      }
     }
 
     const categoryCount = await this.categories.count();
@@ -54,8 +62,14 @@ export class ExpenseDB extends Dexie {
         id: `default-income-${i}`,
         createdAt: now,
       }));
-      await this.categories.bulkAdd([...expenseCats, ...incomeCats]);
+      try {
+        await this.categories.bulkAdd([...expenseCats, ...incomeCats]);
+      } catch {
+        // Race condition: another call already seeded
+      }
     }
+
+    this.seeded = true;
   }
 }
 
