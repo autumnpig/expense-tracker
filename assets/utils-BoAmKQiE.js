@@ -1,0 +1,1 @@
+import{b as e,n as t}from"./index-S8x92dLA.js";function n(n){let r=t;if(r[n])return r[n];let i=n.split(`-`).map(e=>e.charAt(0).toUpperCase()+e.slice(1)).join(``);if(r[i])return r[i];let a=n.charAt(0).toUpperCase()+n.slice(1);return r[a]?r[a]:e}export{n as t};
