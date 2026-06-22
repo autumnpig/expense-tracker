@@ -10,6 +10,7 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const ImportBill = lazy(() => import('@/pages/ImportBill'));
 const TransactionList = lazy(() => import('@/pages/TransactionList'));
 const Budget = lazy(() => import('@/pages/Budget'));
+const CategoryManagement = lazy(() => import('@/pages/CategoryManagement'));
 const Accounts = lazy(() => import('@/pages/Accounts'));
 
 // Pages that don't show bottom nav
@@ -40,6 +41,7 @@ function App() {
             <Route path="/import" element={<ImportBill />} />
             <Route path="/transactions" element={<TransactionList />} />
             <Route path="/budget" element={<Budget />} />
+<Route path="/categories" element={<CategoryManagement />} />
             <Route path="/accounts" element={<Accounts />} />
           </Routes>
         </Suspense>

@@ -113,7 +113,7 @@ export default function Settings() {
       icon: Tags,
       label: '分类管理',
       desc: `${categories.length} 个分类`,
-      onClick: () => navigate('/budget'),
+      onClick: () => navigate('/categories'),
     },
     {
       icon: FileSpreadsheet,
