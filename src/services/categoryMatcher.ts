@@ -200,6 +200,8 @@ export function matchCategory(
   }
 
   // --- 4. WeChat 交易类型 (fallback: structural types like 红包/提现/转账) ---
+  // WeChat expense types that mean "spending" — keyword matching already handled above,
+  // but strip generic prefixes like "扫二维码付款-" from desc to help keyword matching
   if (billCat === '微信红包') {
     return type === 'income' ? '红包' : '其他';
   }
@@ -208,6 +210,10 @@ export function matchCategory(
     return '转账转入';
   }
   if (billCat.includes('零钱通')) return '转账转入';
+  // 群收款 → income
+  if (billCat === '群收款' || billCat.includes('收款')) {
+    return type === 'income' ? '红包' : '其他';
+  }
 
   // Fallback
   return type === 'income' ? '其他收入' : '其他';

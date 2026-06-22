@@ -34,9 +34,12 @@ export default function ImportBill() {
   const [showReimport, setShowReimport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const loadCategories = useCategoryStore((s) => s.load);
+
   useEffect(() => {
     if (accounts.length === 0) loadAccounts();
-  }, []);
+    loadCategories();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function resetState() {
     setRecords([]);
@@ -105,8 +108,11 @@ export default function ImportBill() {
         // Auto-match categories + detect internal transfers
         const categorized = filtered.map((r) => {
           const raw = r.rawRow;
-          const desc = r.description || raw['商品说明'] || raw['商品'] || raw['交易地点/附言'] || '';
-          const party = raw['交易对方'] || raw['对方账号与户名'] || '';
+          const desc = r.description
+            || raw['商品说明'] || raw['商品']
+            || raw['交易地点/附言'] || raw['备注']
+            || raw['摘要'] || '';
+          const party = raw['交易对方'] || raw['商户名称'] || raw['对方账号与户名'] || '';
           const billCat = raw['交易分类'] || raw['交易类型'] || raw['摘要'] || '';
           // Priority: memory > keyword matching > bill category fallback
           const rememberedId = getRememberedCategory(desc);
