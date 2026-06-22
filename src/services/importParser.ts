@@ -329,11 +329,24 @@ function parseRow(row: Record<string, string>): ParsedRecord | null {
   }
 
   // Try to find description
+  // For WeChat/Alipay bills: combine 商品 as primary + 交易对方 as supplement.
+  // Long company names are truncated to keep the description readable.
   let description = '';
-  const descKeys = ['description', 'desc', 'note', '备注', '描述', '交易说明', '商品', '商品说明', '商户名称', '交易对方', '交易地点/附言', '摘要'];
-  for (const dk of descKeys) {
-    const v = normalized[dk] || row[dk];
-    if (v) { description = v.slice(0, 50); break; }
+  const counterparty = normalized['交易对方'] || row['交易对方'] || '';
+  const product = normalized['商品说明'] || row['商品说明'] || normalized['商品'] || row['商品'] || '';
+  if (product && counterparty) {
+    const shortParty = counterparty.length > 20 ? counterparty.slice(0, 20) + '…' : counterparty;
+    description = `${product} · ${shortParty}`.slice(0, 60);
+  } else if (product) {
+    description = product.slice(0, 50);
+  } else if (counterparty) {
+    description = counterparty.slice(0, 50);
+  } else {
+    const descKeys = ['description', 'desc', 'note', '备注', '描述', '交易说明', '商户名称', '交易地点/附言', '摘要'];
+    for (const dk of descKeys) {
+      const v = normalized[dk] || row[dk];
+      if (v) { description = v.slice(0, 50); break; }
+    }
   }
 
   return { date, amount, description, type, rawRow: row };

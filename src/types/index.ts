@@ -69,6 +69,8 @@ export interface ParsedRecord {
   transferToAccount?: string;
   /** Category was auto-applied from persistent memory (not keyword matching) */
   fromMemory?: boolean;
+  /** Source file name when importing from multiple files */
+  sourceFile?: string;
 }
 
 // ========== Report ==========

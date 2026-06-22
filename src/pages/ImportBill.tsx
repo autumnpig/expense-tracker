@@ -7,12 +7,12 @@ import PageHeader from '@/components/shared/PageHeader';
 import AccountSelector from '@/components/shared/AccountSelector';
 import ImportPreviewTable from '@/components/business/ImportPreviewTable';
 import TransferDetectBanner from '@/components/business/TransferDetectBanner';
-import { parseBillFile } from '@/services/importParser';
+import { parseBillFile, dedupBatch } from '@/services/importParser';
 import { matchCategory } from '@/services/categoryMatcher';
 import { getRememberedCategory, rememberCategory } from '@/services/categoryMemory';
 import { detectTransfers, type TransferMatch } from '@/services/transferDetector';
 import type { ParsedRecord, Transaction } from '@/types';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, X } from 'lucide-react';
 
 export default function ImportBill() {
   const navigate = useNavigate();
@@ -22,15 +22,15 @@ export default function ImportBill() {
   const categories = useCategoryStore((s) => s.categories);
 
   const [records, setRecords] = useState<ParsedRecord[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [accountId, setAccountId] = useState('');
-  const [fileName, setFileName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [transferMatches, setTransferMatches] = useState<TransferMatch[]>([]);
   const [confirmedTransfers, setConfirmedTransfers] = useState<TransferMatch[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [skippedBankPaid, setSkippedBankPaid] = useState(0);
-  const [oldImportCount, setOldImportCount] = useState(0);
+  const [oldImportCounts, setOldImportCounts] = useState<Map<string, number>>(new Map());
   const [showReimport, setShowReimport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,9 +41,12 @@ export default function ImportBill() {
   function resetState() {
     setRecords([]);
     setError('');
-    setFileName('');
+    setFileNames([]);
     setTransferMatches([]);
     setConfirmedTransfers([]);
+    setSkippedBankPaid(0);
+    setOldImportCounts(new Map());
+    setShowReimport(false);
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -62,96 +65,138 @@ export default function ImportBill() {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (files.length > 0) handleFiles(files);
   }
 
-  async function handleFile(file: File) {
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) handleFiles(files);
+    e.target.value = '';
+  }
+
+  async function handleFiles(files: File[]) {
     setLoading(true);
     setError('');
-    setFileName(file.name);
-    setSkippedBankPaid(0);
-    setShowReimport(false);
-    try {
-      const parsed = await parseBillFile(file);
+    resetState();
 
-      // Filter: Alipay records paid via bank card → skip (bank bill covers them)
-      let skippedBankCount = 0;
-      const filtered = parsed.filter((r) => {
-        const raw = r.rawRow;
-        const payment = raw['收付款方式'] || raw['收/付款方式'] || '';
-        if (payment && /建设银行|储蓄卡/.test(payment)) {
-          skippedBankCount++;
-          return false;
-        }
-        return true;
-      });
-      setSkippedBankPaid(skippedBankCount);
+    const allRecords: ParsedRecord[] = [];
+    const names: string[] = [];
+    let totalSkippedBank = 0;
+    const importCounts = new Map<string, number>();
 
-      // Auto-match categories + detect internal transfers
-      const categorized = filtered.map((r) => {
-        const raw = r.rawRow;
-        const desc = raw['商品说明'] || raw['商品'] || raw['交易地点/附言'] || r.description || '';
-        const party = raw['交易对方'] || raw['对方账号与户名'] || '';
-        const billCat = raw['交易分类'] || raw['交易类型'] || raw['摘要'] || '';
-        // Priority: memory > keyword matching > bill category fallback
-        const rememberedId = getRememberedCategory(desc);
-        let catName: string | null = null;
-        let fromMemory = false;
-        if (rememberedId) {
-          const rememberedCat = categories.find((c) => c.id === rememberedId);
-          if (rememberedCat && rememberedCat.type === r.type) {
-            catName = rememberedCat.name;
-            fromMemory = true;
+    for (const file of files) {
+      try {
+        const parsed = await parseBillFile(file);
+
+        // Filter: Alipay records paid via bank card → skip (bank bill covers them)
+        let skippedBankCount = 0;
+        const filtered = parsed.filter((r) => {
+          const raw = r.rawRow;
+          const payment = raw['收付款方式'] || raw['收/付款方式'] || '';
+          if (payment && /建设银行|储蓄卡/.test(payment)) {
+            skippedBankCount++;
+            return false;
           }
-        }
-        if (!catName) {
-          catName = matchCategory(desc, party, billCat, r.type);
-        }
-        const cat = categories.find((c) => c.name === catName && c.type === r.type);
-        const result: ParsedRecord = cat ? { ...r, categoryId: cat.id, fromMemory } : { ...r };
+          return true;
+        });
+        totalSkippedBank += skippedBankCount;
 
-        // Auto-detect internal transfers from bank bill descriptions
-        const searchDesc = (desc + ' ' + (r.description || '')).toLowerCase();
-        if (searchDesc.includes('微信零钱提现') || searchDesc.includes('微信提现')) {
-          result.transferFromAccount = '微信零钱';
-        } else if (searchDesc.includes('支付宝提现')) {
-          result.transferFromAccount = '支付宝';
-        } else if (searchDesc.includes('财付通') && searchDesc.includes('微信零钱充值')) {
-          result.transferToAccount = '微信零钱';
+        // Auto-match categories + detect internal transfers
+        const categorized = filtered.map((r) => {
+          const raw = r.rawRow;
+          const desc = r.description || raw['商品说明'] || raw['商品'] || raw['交易地点/附言'] || '';
+          const party = raw['交易对方'] || raw['对方账号与户名'] || '';
+          const billCat = raw['交易分类'] || raw['交易类型'] || raw['摘要'] || '';
+          // Priority: memory > keyword matching > bill category fallback
+          const rememberedId = getRememberedCategory(desc);
+          let catName: string | null = null;
+          let fromMemory = false;
+          if (rememberedId) {
+            const rememberedCat = categories.find((c) => c.id === rememberedId);
+            if (rememberedCat && rememberedCat.type === r.type) {
+              catName = rememberedCat.name;
+              fromMemory = true;
+            }
+          }
+          if (!catName) {
+            catName = matchCategory(desc, party, billCat, r.type);
+          }
+          const cat = categories.find((c) => c.name === catName && c.type === r.type);
+          const result: ParsedRecord = {
+            ...r,
+            sourceFile: file.name,
+            ...(cat ? { categoryId: cat.id, fromMemory } : {}),
+          };
+
+          // Auto-detect internal transfers from bank bill descriptions
+          const searchDesc = (desc + ' ' + (r.description || '')).toLowerCase();
+          if (searchDesc.includes('微信零钱提现') || searchDesc.includes('微信提现')) {
+            result.transferFromAccount = '微信零钱';
+          } else if (searchDesc.includes('支付宝提现')) {
+            result.transferFromAccount = '支付宝';
+          } else if (searchDesc.includes('财付通') && searchDesc.includes('微信零钱充值')) {
+            result.transferToAccount = '微信零钱';
+          }
+
+          return result;
+        });
+
+        allRecords.push(...categorized);
+        names.push(file.name);
+
+        // Check if this file was imported before
+        const existingCount = await useTransactionStore.getState().countByImportedFrom(file.name);
+        if (existingCount > 0) {
+          importCounts.set(file.name, existingCount);
         }
-
-        return result;
-      });
-      setRecords(categorized);
-
-      // Check if this file was imported before
-      const existingCount = await useTransactionStore.getState().countByImportedFrom(file.name);
-      if (existingCount > 0) {
-        setOldImportCount(existingCount);
-        setShowReimport(true);
+      } catch (err: any) {
+        setError((prev) => (prev ? prev + '\n' : '') + `${file.name}: ${err.message || '解析失败'}`);
       }
-
-      if (categorized.length === 0 && skippedBankCount === 0) {
-        setError('未能从文件中解析到交易记录，请检查文件格式');
-      }
-    } catch (err: any) {
-      setError(err.message || '解析失败');
-      setRecords([]);
     }
+
+    // Batch dedup across all files (remove exact duplicates from same merchant on same day)
+    const { unique, removedCount } = dedupBatch(allRecords);
+
+    setRecords(unique);
+    setFileNames(names);
+    setSkippedBankPaid(totalSkippedBank);
+
+    if (importCounts.size > 0) {
+      setOldImportCounts(importCounts);
+      setShowReimport(true);
+    }
+
+    if (unique.length === 0 && totalSkippedBank === 0 && names.length > 0 && !error) {
+      setError('未能从文件中解析到交易记录，请检查文件格式');
+    }
+
     setLoading(false);
   }
 
   async function handleClearOldImport() {
     setLoading(true);
     try {
-      await useTransactionStore.getState().removeByImportedFrom(fileName);
-      setOldImportCount(0);
+      for (const [fname] of oldImportCounts) {
+        await useTransactionStore.getState().removeByImportedFrom(fname);
+      }
+      setOldImportCounts(new Map());
       setShowReimport(false);
     } catch (err: any) {
       setError(err.message || '清除失败');
     }
     setLoading(false);
+  }
+
+  function removeFile(name: string) {
+    setFileNames((prev) => prev.filter((n) => n !== name));
+    setRecords((prev) => prev.filter((r) => r.sourceFile !== name));
+    setOldImportCounts((prev) => {
+      const next = new Map(prev);
+      next.delete(name);
+      if (next.size === 0) setShowReimport(false);
+      return next;
+    });
   }
 
   function updateRecord(index: number, changes: Partial<ParsedRecord>) {
@@ -215,7 +260,7 @@ export default function ImportBill() {
           note: `自动检测: ${r.transferFromAccount} → 银行卡`,
           fromAccountId: fromAcc?.id || '',
           toAccountId: accountId,
-          importedFrom: fileName,
+          importedFrom: r.sourceFile,
         });
         transferIndices.add(i);
       } else if (r.transferToAccount) {
@@ -227,7 +272,7 @@ export default function ImportBill() {
           note: `自动检测: 银行卡 → ${r.transferToAccount}`,
           fromAccountId: accountId,
           toAccountId: toAcc?.id || '',
-          importedFrom: fileName,
+          importedFrom: r.sourceFile,
         });
         transferIndices.add(i);
       }
@@ -247,7 +292,7 @@ export default function ImportBill() {
           note: `转账: ${fromAccountName} → ${toAccountName}`,
           fromAccountId: fromAcc?.id || accountId,
           toAccountId: toAcc?.id || '',
-          importedFrom: fileName,
+          importedFrom: records[m.fromIndex]?.sourceFile,
         };
       },
     );
@@ -262,7 +307,7 @@ export default function ImportBill() {
         accountId: accountId,
         categoryId: r.categoryId || '',
         note: r.description,
-        importedFrom: fileName,
+        importedFrom: r.sourceFile,
       }));
 
     const allTxs = [...autoTransferTxs, ...confirmedTransferTxs, ...individualTxs];
@@ -282,12 +327,14 @@ export default function ImportBill() {
     }
   }
 
+  const totalOldCount = Array.from(oldImportCounts.values()).reduce((s, c) => s + c, 0);
+
   return (
     <div>
       <PageHeader title="导入账单" showBack />
 
       <div className="p-4 space-y-4">
-        {/* File upload — always visible, supports drag & drop */}
+        {/* File upload — always visible, supports drag & drop + multi-file */}
         <div
           onDragOver={handleDragOver}
           onDragEnter={handleDragOver}
@@ -310,12 +357,12 @@ export default function ImportBill() {
               <>
                 <p className="text-sm font-medium">拖拽或点击上传账单文件</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  支持 .xlsx、.xls、.csv 格式
+                  支持 .xlsx、.xls、.csv 格式，可多选
                 </p>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">
-                拖拽或点击更换文件
+                拖拽或点击追加更多文件
               </p>
             )}
           </div>
@@ -324,12 +371,9 @@ export default function ImportBill() {
           ref={fileInputRef}
           type="file"
           accept=".xlsx,.csv,.xls"
+          multiple
           className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
-            e.target.value = '';
-          }}
+          onChange={handleInputChange}
         />
 
         {/* Loading */}
@@ -341,7 +385,7 @@ export default function ImportBill() {
 
         {/* Error */}
         {error && (
-          <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+          <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm whitespace-pre-line">
             {error}
           </div>
         )}
@@ -361,28 +405,56 @@ export default function ImportBill() {
             {showReimport && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-xl p-3 flex items-center justify-between">
                 <span className="text-sm text-amber-800 dark:text-amber-200">
-                  已导入过 {oldImportCount} 条记录，是否清除后重新导入？
+                  已导入过 {totalOldCount} 条记录，是否清除后重新导入？
                 </span>
                 <button
                   onClick={handleClearOldImport}
-                  className="px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors"
+                  className="px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors flex-shrink-0 ml-2"
                 >
                   清除旧记录
                 </button>
               </div>
             )}
 
-            {/* File info */}
+            {/* File list */}
+            <div className="flex flex-wrap gap-2">
+              {fileNames.map((name) => {
+                const fileRecords = records.filter((r) => r.sourceFile === name);
+                const fileOldCount = oldImportCounts.get(name);
+                return (
+                  <div
+                    key={name}
+                    className="flex items-center gap-1.5 bg-muted rounded-lg pl-3 pr-1.5 py-1.5 text-xs"
+                  >
+                    <FileSpreadsheet size={12} className="text-muted-foreground flex-shrink-0" />
+                    <span className="max-w-[140px] truncate">{name}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{fileRecords.length}条</span>
+                    {fileOldCount && (
+                      <span className="text-amber-600 dark:text-amber-400 flex-shrink-0">已导入</span>
+                    )}
+                    <button
+                      onClick={() => removeFile(name)}
+                      className="p-0.5 rounded hover:bg-muted-foreground/20 transition-colors flex-shrink-0"
+                      title="移除此文件"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* File summary */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               <FileSpreadsheet size={16} />
-              <span>{fileName}</span>
+              <span>{fileNames.length} 个文件</span>
               <span>·</span>
               <span>{records.length} 条记录</span>
               {skippedBankPaid > 0 && (
                 <>
                   <span>·</span>
                   <span className="text-amber-600 dark:text-amber-400">
-                    跳过 {skippedBankPaid} 条银行卡付款（由银行账单导入）
+                    跳过 {skippedBankPaid} 条银行卡付款
                   </span>
                 </>
               )}
